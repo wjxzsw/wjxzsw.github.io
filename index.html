@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>切换前后摄像头</title>
+    <style>
+        #video {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+        }
+
+        #switchBtn {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <video id="video" autoplay playsinline></video>
+    <button id="switchBtn">切换镜头</button>
+    <script>
+        // 检查浏览器是否支持相关API
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && navigator.mediaDevices.enumerateDevices) {
+            let video = document.getElementById('video');
+            let switchBtn = document.getElementById('switchBtn');
+            let currentDeviceId;
+
+            // 获取摄像头设备列表
+            function getVideoDevices() {
+                return navigator.mediaDevices.enumerateDevices().then(function (devices) {
+                    let videoDevices = [];
+                    devices.forEach(function (device) {
+                        if (device.kind === 'videoinput') {
+                            videoDevices.push(device);
+                        }
+                    });
+                    return videoDevices;
+                });
+            }
+
+            // 初始化摄像头
+            function initCamera() {
+                const constraints = { video: true };
+                navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+                    video.srcObject = stream;
+                    video.play();
+                    // 获取当前摄像头设备ID
+                    currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId;
+                }).catch(function (error) {
+                    console.log('获取摄像头权限失败: ', error);
+                });
+            }
+
+            // 切换摄像头
+            function switchCamera() {
+                getVideoDevices().then(function (videoDevices) {
+                    let currentIndex = videoDevices.findIndex(device => device.deviceId === currentDeviceId);
+                    let newIndex = (currentIndex + 1) % videoDevices.length;
+                    const constraints = { video: { deviceId: videoDevices[newIndex].deviceId } };
+                    navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+                        const oldStream = video.srcObject;
+                        video.srcObject = stream;
+                        oldStream.getTracks().forEach(function (track) {
+                            track.stop();
+                        });
+                        video.play();
+                        currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId;
+                    }).catch(function (error) {
+                        console.log('切换摄像头失败: ', error);
+                    });
+                });
+            }
+
+            // 页面加载完成后初始化摄像头
+            window.addEventListener('load', function () {
+                initCamera();
+            });
+
+            // 为切换按钮添加点击事件
+            switchBtn.addEventListener('click', function () {
+                switchCamera();
+            });
+        } else {
+            console.log('该浏览器不支持切换摄像头功能，请更换浏览器');
+        }
+    </script>
+</body>
+
+</html>
